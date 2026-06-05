@@ -127,11 +127,3 @@ Dokumen ini berisi rekaman percakapan dari awal pembangunan arsitektur proyek, i
 > 8. Melakukan uji coba API pada kontainer Docker dan mengonfirmasi bahwa data berhasil disimpan ke MySQL dalam Docker.
 
 ---
-
-### 💬 Percakapan 7: Pembuatan Log Percakapan
-
-**👨‍💻 USER:**
-> saya di suruh buat log percakapan kita dalam membangun project ini, buatkan di dalem folder itu namanya prompt.md, yang dimana berisi percakapan kita dari awal pembangunan sampai selesai di deploy di docker
-
-**🤖 ANTIGRAVITY:**
-> *(Membuat berkas `prompt.md` berisi kompilasi log percakapan dari awal hingga selesai)*
