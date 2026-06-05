@@ -1,0 +1,38 @@
+services:
+  # Service 1: Laravel Application
+  app:
+    build: .
+    container_name: loan-app-service
+    ports:
+      - "8000:80"
+    volumes:
+      - .:/var/www/html
+    environment:
+      - APP_ENV=local
+      - APP_DEBUG=true
+      - APP_KEY=base64:LJFvH+VA+oH3BvBDrro9jd6oVp4lUu4QRNjBGnZcbic=
+      - DB_CONNECTION=mysql
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_DATABASE=loan
+      - DB_USERNAME=root
+      - DB_PASSWORD=secretpassword
+      - SERVICE_MOCK_MODE=true
+    depends_on:
+      - db
+
+  # Service 2: MySQL Database
+  db:
+    image: mysql:8.0
+    container_name: loan-db-service
+    restart: always
+    environment:
+      - MYSQL_DATABASE=loan
+      - MYSQL_ROOT_PASSWORD=secretpassword
+    ports:
+      - "33061:3306" # Dipetakan ke 33061 agar tidak bentrok dengan XAMPP MySQL Anda di port 3306
+    volumes:
+      - loan-db-data:/var/lib/mysql
+
+volumes:
+  loan-db-data:
