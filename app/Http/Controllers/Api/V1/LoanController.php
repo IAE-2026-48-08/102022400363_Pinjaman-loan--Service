@@ -21,17 +21,33 @@ class LoanController extends Controller
     }
 
     /**
-     * Ambil daftar semua pengajuan pinjaman (GET /api/v1/loans)
+     * Ambil daftar pengajuan pinjaman (GET /api/v1/loans)
      *
      * @return JsonResponse
      */
     public function index(): JsonResponse
     {
-        $loans = $this->loanService->getAllLoans();
+        $user = auth()->user();
+
+        if ($user->hasRole('admin') || $user->hasRole('staf')) {
+            $loans = $this->loanService->getAllLoans();
+            $message = 'Daftar semua pengajuan pinjaman berhasil diambil.';
+        } elseif ($user->hasRole('warga')) {
+            // Warga hanya bisa melihat pinjaman miliknya sendiri
+            $loans = \App\Models\Loan::where('account_id', $user->email)
+                ->orderBy('created_at', 'desc')
+                ->get();
+            $message = 'Daftar pengajuan pinjaman Anda berhasil diambil.';
+        } else {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Akses ditolak: Peran Anda tidak dikenali.'
+            ], 403);
+        }
         
         return response()->json([
             'status' => 'success',
-            'message' => 'Daftar semua pengajuan pinjaman berhasil diambil.',
+            'message' => $message,
             'data' => LoanResource::collection($loans)
         ]);
     }
@@ -44,6 +60,24 @@ class LoanController extends Controller
      */
     public function store(StoreLoanRequest $request): JsonResponse
     {
+        $user = auth()->user();
+
+        // Hanya warga yang boleh mengajukan pinjaman
+        if (!$user->hasRole('warga')) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Akses ditolak: Hanya warga yang dapat melakukan pengajuan pinjaman.'
+            ], 403);
+        }
+
+        // Pastikan account_id di request sesuai dengan email warga yang sedang login (keamanan data)
+        if ($request->input('account_id') !== $user->email) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Akses ditolak: Anda hanya dapat mengajukan pinjaman untuk akun Anda sendiri.'
+            ], 403);
+        }
+
         $loan = $this->loanService->applyForLoan(
             $request->input('account_id'),
             $request->input('amount'),
@@ -71,6 +105,7 @@ class LoanController extends Controller
      */
     public function show(string $id): JsonResponse
     {
+        $user = auth()->user();
         $loan = $this->loanService->getLoanDetails($id);
 
         if (!$loan) {
@@ -78,6 +113,21 @@ class LoanController extends Controller
                 'status' => 'error',
                 'message' => 'Detail pengajuan pinjaman tidak ditemukan.'
             ], 404);
+        }
+
+        // Batasi akses jika pengguna adalah warga biasa dan mencoba melihat data warga lain
+        if ($user->hasRole('warga') && $loan->account_id !== $user->email) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Akses ditolak: Anda tidak memiliki wewenang untuk melihat detail pinjaman ini.'
+            ], 403);
+        }
+
+        if (!$user->hasRole('admin') && !$user->hasRole('staf') && !$user->hasRole('warga')) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Akses ditolak: Peran Anda tidak dikenali.'
+            ], 403);
         }
 
         return (new LoanResource($loan))

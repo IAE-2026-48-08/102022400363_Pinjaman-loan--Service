@@ -24,6 +24,7 @@ class Loan extends Model
         'remaining_balance',
         'status',
         'rejection_reason',
+        'receipt_number',
     ];
 
     /**

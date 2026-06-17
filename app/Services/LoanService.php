@@ -5,19 +5,24 @@ namespace App\Services;
 use App\Models\Loan;
 use App\Services\External\AccountServiceClient;
 use App\Services\External\TransactionServiceClient;
+use App\Services\External\SoapAuditService;
+use App\Jobs\PublishLoanEvent;
 use Illuminate\Validation\ValidationException;
 
 class LoanService
 {
     protected AccountServiceClient $accountClient;
     protected TransactionServiceClient $transactionClient;
+    protected SoapAuditService $soapAuditService;
 
     public function __construct(
         AccountServiceClient $accountClient,
-        TransactionServiceClient $transactionClient
+        TransactionServiceClient $transactionClient,
+        SoapAuditService $soapAuditService
     ) {
         $this->accountClient = $accountClient;
         $this->transactionClient = $transactionClient;
+        $this->soapAuditService = $soapAuditService;
     }
 
     /**
@@ -85,8 +90,18 @@ class LoanService
             $remainingBalance = 0; // Jika ditolak, tidak ada saldo pinjaman yang tersisa
         }
 
-        // 6. Simpan pengajuan pinjaman ke database
-        return Loan::create([
+        // 6. Kirim Audit ke SOAP Service (Legacy Audit System) sebelum simpan ke database
+        $logData = [
+            'account_id' => $accountId,
+            'amount' => $amount,
+            'duration_months' => $durationMonths,
+            'status' => $status,
+            'rejection_reason' => $rejectionReason
+        ];
+        $receiptNumber = $this->soapAuditService->auditTransaction('LoanApplied', $logData);
+
+        // 7. Simpan pengajuan pinjaman ke database
+        $loan = Loan::create([
             'account_id' => $accountId,
             'amount' => $amount,
             'duration_months' => $durationMonths,
@@ -95,7 +110,25 @@ class LoanService
             'remaining_balance' => $remainingBalance,
             'status' => $status,
             'rejection_reason' => $rejectionReason,
+            'receipt_number' => $receiptNumber,
         ]);
+
+        // 8. Kirim Event ke RabbitMQ Broker secara Asinkron
+        PublishLoanEvent::dispatch('loan.applied', [
+            'id' => $loan->id,
+            'account_id' => $loan->account_id,
+            'amount' => (float) $loan->amount,
+            'duration_months' => (int) $loan->duration_months,
+            'interest_rate' => (float) $loan->interest_rate,
+            'monthly_installment' => (float) $loan->monthly_installment,
+            'remaining_balance' => (float) $loan->remaining_balance,
+            'status' => $loan->status,
+            'rejection_reason' => $loan->rejection_reason,
+            'receipt_number' => $loan->receipt_number,
+            'created_at' => $loan->created_at ? $loan->created_at->toIso8601String() : null,
+        ]);
+
+        return $loan;
     }
 
     /**

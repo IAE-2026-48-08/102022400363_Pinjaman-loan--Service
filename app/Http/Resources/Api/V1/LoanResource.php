@@ -24,6 +24,7 @@ class LoanResource extends JsonResource
             'remaining_balance' => (float) $this->remaining_balance,
             'status' => $this->status,
             'rejection_reason' => $this->rejection_reason,
+            'receipt_number' => $this->receipt_number,
             'created_at' => $this->created_at ? $this->created_at->toIso8601String() : null,
             'updated_at' => $this->updated_at ? $this->updated_at->toIso8601String() : null,
         ];
