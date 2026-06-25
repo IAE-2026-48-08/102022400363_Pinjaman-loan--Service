@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y \
     unzip \
     git \
     curl \
+    default-mysql-client \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install pdo_mysql gd zip bcmath \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
@@ -28,15 +29,22 @@ COPY . /var/www/html
 # 6. Salin Composer binary dari image Composer resmi
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# 7. Jalankan Composer Install
-RUN composer install --no-interaction --optimize-autoloader --no-dev
+# 7. Jalankan Composer Install (tanpa dev dependencies)
+RUN composer install --no-interaction --optimize-autoloader --no-dev --no-scripts
 
-# 8. Atur hak akses folder storage & bootstrap cache agar writable oleh web server
+# 8. Generate autoload class map (tanpa menjalankan artisan scripts yang butuh DB)
+RUN composer dump-autoload --optimize --no-scripts
+
+# 9. Copy entrypoint script dan set permissions
+COPY .docker/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+# 10. Atur hak akses folder storage & bootstrap cache agar writable oleh web server
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache \
     && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 
-# 9. Ekspos port 80 untuk container
+# 11. Ekspos port 80 untuk container
 EXPOSE 80
 
-# 10. Nyalakan server Apache
-CMD ["apache2-foreground"]
+# 12. Gunakan entrypoint untuk migrasi DB otomatis saat container start
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]

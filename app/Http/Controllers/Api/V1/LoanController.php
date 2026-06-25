@@ -6,11 +6,12 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 
 use App\Http\Requests\Api\V1\StoreLoanRequest;
-use App\Http\HttpKernel\Response;
 use App\Http\Resources\Api\V1\LoanResource;
 use App\Services\LoanService;
 use Illuminate\Http\JsonResponse;
+use OpenApi\Attributes as OA;
 
+#[OA\Tag(name: "Loans", description: "Endpoints manajemen pengajuan pinjaman")]
 class LoanController extends Controller
 {
     protected LoanService $loanService;
@@ -20,11 +21,30 @@ class LoanController extends Controller
         $this->loanService = $loanService;
     }
 
-    /**
-     * Ambil daftar pengajuan pinjaman (GET /api/v1/loans)
-     *
-     * @return JsonResponse
-     */
+    #[OA\Get(
+        path: "/api/v1/loans",
+        summary: "Daftar semua pengajuan pinjaman",
+        description: "Admin/Staf melihat semua pinjaman. Warga hanya melihat pinjaman miliknya sendiri.",
+        security: [["ApiKeyAuth" => []], ["BearerAuth" => []]],
+        tags: ["Loans"],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: "Berhasil",
+                content: new OA\JsonContent(ref: "#/components/schemas/SuccessListResponse")
+            ),
+            new OA\Response(
+                response: 401,
+                description: "Tidak terautentikasi",
+                content: new OA\JsonContent(ref: "#/components/schemas/ErrorResponse")
+            ),
+            new OA\Response(
+                response: 403,
+                description: "Akses ditolak",
+                content: new OA\JsonContent(ref: "#/components/schemas/ErrorResponse")
+            )
+        ]
+    )]
     public function index(): JsonResponse
     {
         $user = auth()->user();
@@ -41,10 +61,11 @@ class LoanController extends Controller
         } else {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Akses ditolak: Peran Anda tidak dikenali.'
+                'message' => 'Akses ditolak: Peran Anda tidak dikenali.',
+                'errors' => null
             ], 403);
         }
-        
+
         return response()->json([
             'status' => 'success',
             'message' => $message,
@@ -52,12 +73,46 @@ class LoanController extends Controller
         ]);
     }
 
-    /**
-     * Ajukan pinjaman baru (POST /api/v1/loans)
-     *
-     * @param StoreLoanRequest $request
-     * @return JsonResponse
-     */
+    #[OA\Post(
+        path: "/api/v1/loans",
+        summary: "Ajukan pinjaman baru",
+        description: "Hanya warga yang dapat mengajukan pinjaman. account_id harus sesuai email pengguna yang login.",
+        security: [["ApiKeyAuth" => []], ["BearerAuth" => []]],
+        tags: ["Loans"],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ["account_id", "amount", "duration_months"],
+                properties: [
+                    new OA\Property(property: "account_id", type: "string", example: "warga13@ktp.iae.id"),
+                    new OA\Property(property: "amount", type: "number", format: "float", example: 5000000),
+                    new OA\Property(property: "duration_months", type: "integer", example: 12)
+                ]
+            )
+        ),
+        responses: [
+            new OA\Response(
+                response: 201,
+                description: "Pinjaman berhasil diajukan",
+                content: new OA\JsonContent(ref: "#/components/schemas/SuccessSingleResponse")
+            ),
+            new OA\Response(
+                response: 401,
+                description: "Tidak terautentikasi",
+                content: new OA\JsonContent(ref: "#/components/schemas/ErrorResponse")
+            ),
+            new OA\Response(
+                response: 403,
+                description: "Akses ditolak",
+                content: new OA\JsonContent(ref: "#/components/schemas/ErrorResponse")
+            ),
+            new OA\Response(
+                response: 422,
+                description: "Validasi gagal",
+                content: new OA\JsonContent(ref: "#/components/schemas/ErrorResponse")
+            )
+        ]
+    )]
     public function store(StoreLoanRequest $request): JsonResponse
     {
         $user = auth()->user();
@@ -66,7 +121,8 @@ class LoanController extends Controller
         if (!$user->hasRole('warga')) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Akses ditolak: Hanya warga yang dapat melakukan pengajuan pinjaman.'
+                'message' => 'Akses ditolak: Hanya warga yang dapat melakukan pengajuan pinjaman.',
+                'errors' => null
             ], 403);
         }
 
@@ -74,7 +130,8 @@ class LoanController extends Controller
         if ($request->input('account_id') !== $user->email) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Akses ditolak: Anda hanya dapat mengajukan pinjaman untuk akun Anda sendiri.'
+                'message' => 'Akses ditolak: Anda hanya dapat mengajukan pinjaman untuk akun Anda sendiri.',
+                'errors' => null
             ], 403);
         }
 
@@ -84,25 +141,55 @@ class LoanController extends Controller
             $request->input('duration_months')
         );
 
-        $statusMessage = $loan->status === 'approved' 
-            ? 'Pengajuan pinjaman disetujui secara otomatis berdasarkan riwayat transaksi.' 
+        $statusMessage = $loan->status === 'approved'
+            ? 'Pengajuan pinjaman disetujui secara otomatis berdasarkan riwayat transaksi.'
             : 'Pengajuan pinjaman ditolak berdasarkan analisis riwayat transaksi.';
 
-        return (new LoanResource($loan))
-            ->additional([
-                'status' => 'success',
-                'message' => $statusMessage,
-            ])
-            ->response()
-            ->setStatusCode(201);
+        return response()->json([
+            'status' => 'success',
+            'message' => $statusMessage,
+            'data' => new LoanResource($loan)
+        ], 201);
     }
 
-    /**
-     * Ambil detail & status pinjaman tertentu (GET /api/v1/loans/{id})
-     *
-     * @param string $id
-     * @return JsonResponse
-     */
+    #[OA\Get(
+        path: "/api/v1/loans/{id}",
+        summary: "Detail satu pengajuan pinjaman",
+        description: "Admin/Staf dapat melihat semua pinjaman. Warga hanya dapat melihat miliknya sendiri.",
+        security: [["ApiKeyAuth" => []], ["BearerAuth" => []]],
+        tags: ["Loans"],
+        parameters: [
+            new OA\Parameter(
+                name: "id",
+                in: "path",
+                required: true,
+                description: "UUID pinjaman",
+                schema: new OA\Schema(type: "string")
+            )
+        ],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: "Berhasil",
+                content: new OA\JsonContent(ref: "#/components/schemas/SuccessSingleResponse")
+            ),
+            new OA\Response(
+                response: 401,
+                description: "Tidak terautentikasi",
+                content: new OA\JsonContent(ref: "#/components/schemas/ErrorResponse")
+            ),
+            new OA\Response(
+                response: 403,
+                description: "Akses ditolak",
+                content: new OA\JsonContent(ref: "#/components/schemas/ErrorResponse")
+            ),
+            new OA\Response(
+                response: 404,
+                description: "Pinjaman tidak ditemukan",
+                content: new OA\JsonContent(ref: "#/components/schemas/ErrorResponse")
+            )
+        ]
+    )]
     public function show(string $id): JsonResponse
     {
         $user = auth()->user();
@@ -111,7 +198,8 @@ class LoanController extends Controller
         if (!$loan) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Detail pengajuan pinjaman tidak ditemukan.'
+                'message' => 'Detail pengajuan pinjaman tidak ditemukan.',
+                'errors' => null
             ], 404);
         }
 
@@ -119,22 +207,23 @@ class LoanController extends Controller
         if ($user->hasRole('warga') && $loan->account_id !== $user->email) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Akses ditolak: Anda tidak memiliki wewenang untuk melihat detail pinjaman ini.'
+                'message' => 'Akses ditolak: Anda tidak memiliki wewenang untuk melihat detail pinjaman ini.',
+                'errors' => null
             ], 403);
         }
 
         if (!$user->hasRole('admin') && !$user->hasRole('staf') && !$user->hasRole('warga')) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Akses ditolak: Peran Anda tidak dikenali.'
+                'message' => 'Akses ditolak: Peran Anda tidak dikenali.',
+                'errors' => null
             ], 403);
         }
 
-        return (new LoanResource($loan))
-            ->additional([
-                'status' => 'success',
-                'message' => 'Detail pengajuan pinjaman berhasil ditemukan.'
-            ])
-            ->response();
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Detail pengajuan pinjaman berhasil ditemukan.',
+            'data' => new LoanResource($loan)
+        ]);
     }
 }

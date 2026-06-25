@@ -1,0 +1,368 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "Pinjaman (Loan) Service API",
+        "description": "Mini-service for Loan/Pinjaman management. Part of the IAE Tugas 3 ecosystem.",
+        "contact": {
+            "email": "102022400363@student.iae.id"
+        },
+        "version": "1.0.0"
+    },
+    "servers": [
+        {
+            "url": "/",
+            "description": "Local / Docker Server"
+        }
+    ],
+    "paths": {
+        "/api/v1/loans": {
+            "get": {
+                "tags": [
+                    "Loans"
+                ],
+                "summary": "Daftar semua pengajuan pinjaman",
+                "description": "Admin/Staf melihat semua pinjaman. Warga hanya melihat pinjaman miliknya sendiri.",
+                "operationId": "d7f02ad86f88a5dac398b7f9467126f1",
+                "responses": {
+                    "200": {
+                        "description": "Berhasil",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Tidak terautentikasi",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Akses ditolak",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    },
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Loans"
+                ],
+                "summary": "Ajukan pinjaman baru",
+                "description": "Hanya warga yang dapat mengajukan pinjaman. account_id harus sesuai email pengguna yang login.",
+                "operationId": "9ec99d739226d4e1e61c1132cb2c8eac",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "account_id",
+                                    "amount",
+                                    "duration_months"
+                                ],
+                                "properties": {
+                                    "account_id": {
+                                        "type": "string",
+                                        "example": "warga13@ktp.iae.id"
+                                    },
+                                    "amount": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 5000000
+                                    },
+                                    "duration_months": {
+                                        "type": "integer",
+                                        "example": 12
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Pinjaman berhasil diajukan",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessSingleResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Tidak terautentikasi",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Akses ditolak",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validasi gagal",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    },
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/loans/{id}": {
+            "get": {
+                "tags": [
+                    "Loans"
+                ],
+                "summary": "Detail satu pengajuan pinjaman",
+                "description": "Admin/Staf dapat melihat semua pinjaman. Warga hanya dapat melihat miliknya sendiri.",
+                "operationId": "7ad991030569edb2a676fcce8060a386",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "UUID pinjaman",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessSingleResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Tidak terautentikasi",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Akses ditolak",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Pinjaman tidak ditemukan",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    },
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "LoanResource": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "example": "uuid-xxxx"
+                    },
+                    "account_id": {
+                        "type": "string",
+                        "example": "warga13@ktp.iae.id"
+                    },
+                    "amount": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 5000000
+                    },
+                    "duration_months": {
+                        "type": "integer",
+                        "example": 12
+                    },
+                    "interest_rate": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 0.05
+                    },
+                    "monthly_installment": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 441667
+                    },
+                    "remaining_balance": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 5000000
+                    },
+                    "status": {
+                        "type": "string",
+                        "example": "approved",
+                        "enum": [
+                            "approved",
+                            "rejected"
+                        ]
+                    },
+                    "rejection_reason": {
+                        "type": "string",
+                        "example": null,
+                        "nullable": true
+                    },
+                    "receipt_number": {
+                        "type": "string",
+                        "example": "IAE-LOG-2026-ABCD1234",
+                        "nullable": true
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "type": "object"
+            },
+            "SuccessListResponse": {
+                "properties": {
+                    "status": {
+                        "type": "string",
+                        "example": "success"
+                    },
+                    "message": {
+                        "type": "string",
+                        "example": "Berhasil"
+                    },
+                    "data": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/LoanResource"
+                        }
+                    }
+                },
+                "type": "object"
+            },
+            "SuccessSingleResponse": {
+                "properties": {
+                    "status": {
+                        "type": "string",
+                        "example": "success"
+                    },
+                    "message": {
+                        "type": "string",
+                        "example": "Berhasil"
+                    },
+                    "data": {
+                        "$ref": "#/components/schemas/LoanResource"
+                    }
+                },
+                "type": "object"
+            },
+            "ErrorResponse": {
+                "properties": {
+                    "status": {
+                        "type": "string",
+                        "example": "error"
+                    },
+                    "message": {
+                        "type": "string",
+                        "example": "Autentikasi API Key gagal."
+                    },
+                    "errors": {
+                        "type": "object",
+                        "example": null,
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            }
+        },
+        "securitySchemes": {
+            "ApiKeyAuth": {
+                "type": "apiKey",
+                "description": "API Key (NIM mahasiswa, e.g. 102022400363)",
+                "name": "X-IAE-KEY",
+                "in": "header"
+            },
+            "BearerAuth": {
+                "type": "http",
+                "description": "SSO Bearer Token dari iae-sso.virtualfri.id",
+                "bearerFormat": "JWT",
+                "scheme": "bearer"
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "Loans",
+            "description": "Endpoints manajemen pengajuan pinjaman"
+        }
+    ]
+}

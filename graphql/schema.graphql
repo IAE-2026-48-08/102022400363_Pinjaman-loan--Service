@@ -1,0 +1,63 @@
+"A datetime string with format `Y-m-d H:i:s`, e.g. `2018-05-23 13:43:32`."
+scalar DateTime @scalar(class: "Nuwave\\Lighthouse\\Schema\\Types\\Scalars\\DateTime")
+
+"Indicates what fields are available at the top level of a query operation."
+type Query {
+    "List all loan applications. Admin/Staf can see all, others see all for testing."
+    loans: [Loan!]! @all
+
+    "Find a single loan application by ID."
+    loan(id: ID! @eq): Loan @find
+}
+
+"Indicates what mutations are available."
+type Mutation {
+    "Apply for a new loan. Returns the created Loan with receipt_number from SOAP audit."
+    createLoan(
+        "Account ID (email) of the applicant."
+        account_id: String!
+        "Loan amount in IDR."
+        amount: Float!
+        "Loan duration in months."
+        duration_months: Int!
+    ): Loan @field(resolver: "App\\GraphQL\\Mutations\\CreateLoan")
+}
+
+"A loan application in the Pinjaman Service."
+type Loan {
+    "Unique primary key (UUID)."
+    id: ID!
+
+    "Account ID (email) of the applicant."
+    account_id: String!
+
+    "Loan amount in IDR."
+    amount: Float!
+
+    "Loan duration in months."
+    duration_months: Int!
+
+    "Annual interest rate applied."
+    interest_rate: Float!
+
+    "Monthly installment amount."
+    monthly_installment: Float!
+
+    "Current remaining balance."
+    remaining_balance: Float!
+
+    "Loan status: approved or rejected."
+    status: String!
+
+    "Reason for rejection (if applicable)."
+    rejection_reason: String
+
+    "Receipt number from SOAP Audit Service."
+    receipt_number: String
+
+    "When the loan was created."
+    created_at: DateTime
+
+    "When the loan was last updated."
+    updated_at: DateTime
+}

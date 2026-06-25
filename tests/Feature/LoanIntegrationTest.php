@@ -91,13 +91,28 @@ KZqg69B8rcrJLgef39FTSok=
         return JWT::encode($payload, $this->privateKeyPem, 'RS256', 'iae-central-2026');
     }
 
-    public function test_request_without_token_returns_401()
+    public function test_request_without_api_key_returns_401()
     {
+        // Request tanpa X-IAE-KEY header harus ditolak dengan 401
         $response = $this->getJson('/api/v1/loans');
         $response->assertStatus(401)
                  ->assertJson([
                      'status' => 'error',
-                     'message' => 'Autentikasi gagal: Token tidak ditemukan atau format tidak valid.'
+                     'message' => 'Autentikasi API Key gagal: Header X-IAE-KEY tidak valid atau tidak ditemukan.'
+                 ]);
+    }
+
+    public function test_request_with_invalid_api_key_returns_401()
+    {
+        // Request dengan X-IAE-KEY header salah harus ditolak dengan 401
+        $response = $this->withHeaders([
+            'X-IAE-KEY' => 'SALAH_KEY_123'
+        ])->getJson('/api/v1/loans');
+        
+        $response->assertStatus(401)
+                 ->assertJson([
+                     'status' => 'error',
+                     'message' => 'Autentikasi API Key gagal: Header X-IAE-KEY tidak valid atau tidak ditemukan.'
                  ]);
     }
 
@@ -114,6 +129,7 @@ KZqg69B8rcrJLgef39FTSok=
         ]);
 
         $response = $this->withHeaders([
+            'X-IAE-KEY' => '102022400363',
             'Authorization' => 'Bearer ' . $token
         ])->getJson('/api/v1/loans');
 
@@ -141,6 +157,7 @@ KZqg69B8rcrJLgef39FTSok=
         ]);
 
         $response = $this->withHeaders([
+            'X-IAE-KEY' => '102022400363',
             'Authorization' => 'Bearer ' . $token
         ])->postJson('/api/v1/loans', [
             'account_id' => 'warga01@ktp.iae.id', // spoofing other account
@@ -174,6 +191,7 @@ KZqg69B8rcrJLgef39FTSok=
         ]);
         
         $response = $this->withHeaders([
+            'X-IAE-KEY' => '102022400363',
             'Authorization' => 'Bearer ' . $token
         ])->postJson('/api/v1/loans', [
             'account_id' => 'warga99@ktp.iae.id',

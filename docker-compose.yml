@@ -11,13 +11,22 @@ services:
       - APP_ENV=local
       - APP_DEBUG=true
       - APP_KEY=base64:LJFvH+VA+oH3BvBDrro9jd6oVp4lUu4QRNjBGnZcbic=
+      - APP_URL=http://localhost:8000
       - DB_CONNECTION=mysql
       - DB_HOST=db
       - DB_PORT=3306
       - DB_DATABASE=loan
       - DB_USERNAME=root
       - DB_PASSWORD=secretpassword
-      - SERVICE_MOCK_MODE=true
+      - SERVICE_MOCK_MODE=false
+      - SESSION_DRIVER=file
+      - CACHE_STORE=file
+      - QUEUE_CONNECTION=sync
+      - IAE_KEY=102022400363
+      - SSO_URL=https://iae-sso.virtualfri.id
+      - SSO_API_KEY=KEY-MHS-391
+      - SOAP_AUDIT_URL=https://iae-sso.virtualfri.id/soap/v1/audit
+      - AMQP_PUBLISH_URL=https://iae-sso.virtualfri.id/api/v1/messages/publish
     depends_on:
       - db
 
